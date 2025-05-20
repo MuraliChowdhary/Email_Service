@@ -12,63 +12,48 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SendingEmail = exports.sendEmail = void 0;
+exports.sendemail = void 0;
+// supportController.ts
 const express_1 = __importDefault(require("express"));
-const client_1 = require("@prisma/client");
 const dotenv_1 = __importDefault(require("dotenv"));
 const nodemailer_1 = __importDefault(require("nodemailer"));
 dotenv_1.default.config();
-const app = (0, express_1.default)();
-const prisma = new client_1.PrismaClient();
+console.log(process.env.EMAIL_USER, process.env.EMAIL_APP_PASSWORD);
+const router = express_1.default.Router();
 const transporter = nodemailer_1.default.createTransport({
     service: 'gmail',
     auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_APP_PASSWORD
+        user: process.env.EMAIL_USER, // your email (e.g., muralisudireddy0@gmail.com)
+        pass: process.env.EMAIL_APP_PASSWORD // your app password
     }
 });
-const sendEmail = (id) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        if (!process.env.EMAIL_USER || !process.env.EMAIL_APP_PASSWORD) {
-            throw new Error('Email credentials not found in environment variables');
-        }
-        const data = yield prisma.email.findUnique({ where: { id } });
-        if (!data) {
-            throw new Error('Email data not found');
-        }
-        const recipient = data.recipient;
-        const subject = data.subject;
-        const body = data.body;
-        yield transporter.verify();
-        const info = yield transporter.sendMail({
-            from: process.env.EMAIL_USER,
-            to: recipient,
-            subject: subject,
-            text: body,
-        });
-        console.log('Email sent: ' + info.response);
-        return info;
-    }
-    catch (error) {
-        console.error('Error sending email:', error);
-        throw error;
-    }
-});
-exports.sendEmail = sendEmail;
-const SendingEmail = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.body;
-    if (!id) {
-        res.status(400).json({ error: "Email ID is required" });
-        //we need to go to the next middleware
+const sendemail = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { name, email, message } = req.body;
+    if (!name || !email || !message) {
+        res.status(400).json({ error: "Name, Email, and Message are required" });
         return;
     }
     try {
-        const result = yield (0, exports.sendEmail)(id);
-        res.json({ message: "Email sent successfully", result });
+        yield transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: "muralisudireddy@gmail.com", // receiver email
+            subject: "New Support Query from PrimeMart",
+            text: `
+You received a new message from your IMS support form:
+
+Name: ${name}
+Email: ${email}
+
+Message:
+${message}
+      `
+        });
+        res.status(200).json({ message: "Support email sent successfully." });
     }
     catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error";
-        res.status(500).json({ error: errorMessage });
+        console.error("Error sending support email:", error);
+        res.status(500).json({ error: "Failed to send support email." });
     }
 });
-exports.SendingEmail = SendingEmail;
+exports.sendemail = sendemail;
+exports.default = router;
